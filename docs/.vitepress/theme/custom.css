@@ -1,0 +1,9 @@
+/* 配图按 860px 宽绘制，放宽正文区让图里的文字保持可读 */
+.VPDoc.has-aside .content-container {
+  max-width: 880px !important;
+}
+.vp-doc img[src$='.svg'] {
+  width: 100%;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+}
