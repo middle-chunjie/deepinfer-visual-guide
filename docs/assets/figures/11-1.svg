@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" width="860" height="300" color="#111A23"><title>上：标准 Transformer 层，一条残差流；下：V4.1 层，4 条残差流，每个子层前后各有一次 HC 混合</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="300" rx="10" fill="#FFFFFF"/>
+      <defs><marker id="ar11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path></marker></defs>
+      <g font-size="12">
+        <text x="20" y="20" font-weight="600">标准 Transformer 层（Llama 等）</text>
+        <line x1="20" y1="46" x2="840" y2="46" stroke="currentColor" stroke-opacity=".5" stroke-width="2.5"></line>
+        <text x="20" y="38" font-size="10.5" opacity=".75">残差 x</text>
+        <rect x="150" y="64" width="190" height="34" rx="6" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="245" y="86" text-anchor="middle">Norm → Attention</text>
+        <rect x="480" y="64" width="190" height="34" rx="6" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="575" y="86" text-anchor="middle">Norm → FFN（稠密）</text>
+        <g stroke="currentColor" stroke-opacity=".6" fill="none" marker-end="url(#ar11)"><path d="M160,48 L160,62"></path><path d="M330,64 L330,50"></path><path d="M490,48 L490,62"></path><path d="M660,64 L660,50"></path></g>
+        <text x="345" y="60" font-size="10.5" opacity=".8">x = x + attn(x)</text><text x="675" y="60" font-size="10.5" opacity=".8">x = x + ffn(x)</text>
+
+        <text x="20" y="140" font-weight="600">V4.1-Flash 层</text>
+        <g stroke="currentColor" stroke-opacity=".45" stroke-width="2"><line x1="20" y1="160" x2="840" y2="160"></line><line x1="20" y1="172" x2="840" y2="172"></line><line x1="20" y1="184" x2="840" y2="184"></line><line x1="20" y1="196" x2="840" y2="196"></line></g>
+        <text x="20" y="154" font-size="10.5" opacity=".75">4 条残差流 [n, 4, 5120]</text>
+        <rect x="70" y="218" width="84" height="40" rx="6" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="112" y="236" text-anchor="middle" font-size="11">Engram</text><text x="112" y="250" text-anchor="middle" font-size="9.5" opacity=".75">仅 1、14 层</text>
+        <rect x="174" y="218" width="76" height="40" rx="6" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="212" y="236" text-anchor="middle" font-size="11">HC pre</text><text x="212" y="250" text-anchor="middle" font-size="9.5" class="m">4→1</text>
+        <rect x="268" y="218" width="140" height="40" rx="6" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="338" y="236" text-anchor="middle" font-size="11">Norm → 稀疏注意力</text><text x="338" y="250" text-anchor="middle" font-size="9.5" opacity=".75">第 12 节</text>
+        <rect x="426" y="218" width="76" height="40" rx="6" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="464" y="236" text-anchor="middle" font-size="11">HC post</text><text x="464" y="250" text-anchor="middle" font-size="9.5" class="m">1→4</text>
+        <rect x="520" y="218" width="76" height="40" rx="6" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="558" y="236" text-anchor="middle" font-size="11">HC pre</text><text x="558" y="250" text-anchor="middle" font-size="9.5" class="m">4→1</text>
+        <rect x="614" y="218" width="140" height="40" rx="6" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="684" y="236" text-anchor="middle" font-size="11">Norm → MoE</text><text x="684" y="250" text-anchor="middle" font-size="9.5" opacity=".75">384 选 6 + 1 共享</text>
+        <rect x="772" y="218" width="68" height="40" rx="6" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="806" y="242" text-anchor="middle" font-size="11">HC post</text>
+        <g stroke="currentColor" stroke-opacity=".6" fill="none" marker-end="url(#ar11)">
+          <line x1="112" y1="198" x2="112" y2="216"></line><line x1="212" y1="198" x2="212" y2="216"></line><line x1="250" y1="238" x2="266" y2="238"></line><line x1="408" y1="238" x2="424" y2="238"></line><line x1="464" y1="216" x2="464" y2="200"></line><line x1="558" y1="198" x2="558" y2="216"></line><line x1="596" y1="238" x2="612" y2="238"></line><line x1="754" y1="238" x2="770" y2="238"></line><line x1="806" y1="216" x2="806" y2="200"></line>
+        </g>
+        <text x="20" y="284" font-size="10.5" opacity=".85">HC pre：用可学习系数把 4 路混成 1 路送进子层；HC post：把子层输出按系数写回 4 路；残差混合矩阵经 Sinkhorn 迭代约束（mHC）。hc_shifted=True 时每个子层复用上一子层算好的混合，省一次 GEMM。</text>
+      </g>
+    </svg>

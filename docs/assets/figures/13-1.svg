@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 210" width="860" height="210" color="#111A23"><title>compact 截断：前 20 层处理全部 prompt token，后 20 层只处理末尾 140 个 token</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="210" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="20" opacity=".8">prompt 位置 0 … L</text>
+        <text x="20" y="52">layer 0–19</text>
+        <rect x="120" y="38" width="720" height="22" rx="4" fill="#3D72CF"></rect><text x="480" y="53" text-anchor="middle" fill="#fff">全部 L 个 token 正常 forward，写 ca_cache / ica_cache / SWA</text>
+        <text x="20" y="98">layer 20 入口</text>
+        <rect x="120" y="86" width="720" height="8" rx="3" fill="#7E46CF" opacity=".55"></rect>
+        <text x="480" y="112" text-anchor="middle" font-size="10.5">shared_hidden 一次投影出 consumer 层共用的压缩 KV（全长）</text>
+        <text x="20" y="146">layer 20–39</text>
+        <rect x="120" y="134" width="720" height="22" rx="4" fill="#E3E8ED"></rect><rect x="722" y="134" width="118" height="22" rx="4" fill="#7E46CF"></rect>
+        <text x="781" y="149" text-anchor="middle" fill="#fff">末 140</text><text x="420" y="149" text-anchor="middle" opacity=".7">跳过：不算 query，不跑 MoE</text>
+        <text x="120" y="184" font-size="10.5">140 = SWA 窗口 128 + 最大回溯 6（投机解码可能回退）+ 余量；要求 ≥ 窗口 + MAX_BACKTRACKING_TOKENS</text>
+        <text x="120" y="202" font-size="10.5" opacity=".8">长 prompt 下 prefill 计算量接近减半（文档说法）：后 20 层的计算从 L 个 token 降到 140 个。</text>
+      </g>
+    </svg>

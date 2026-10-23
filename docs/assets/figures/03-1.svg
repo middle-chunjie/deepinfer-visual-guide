@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 250" width="860" height="250" color="#111A23"><title>launch_dp 为每个 DP rank 启动一个进程；CP 大于 1 时 driver 通过共享内存把方法名广播给 follower</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="250" rx="10" fill="#FFFFFF"/>
+      <defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path></marker></defs>
+      <g font-size="12">
+        <rect x="10" y="95" width="130" height="56" rx="7" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect>
+        <text x="75" y="118" text-anchor="middle" font-weight="600">launch_dp</text><text x="75" y="136" text-anchor="middle" class="m" font-size="10.5">spawn × dp/节点</text>
+        <g stroke="currentColor" stroke-opacity=".6" fill="none" marker-end="url(#ar3)"><path d="M140,112 C175,112 175,46 205,46"></path><path d="M140,134 C175,134 175,196 205,196"></path></g>
+        <rect x="208" y="10" width="640" height="104" rx="9" fill="#DCE2FB" stroke="#2F49D8"></rect>
+        <text x="224" y="32" font-weight="600">DP rank 0 进程</text><text x="350" y="32" class="m" font-size="10.5" opacity=".75">CUDA_VISIBLE_DEVICES=0,1（cp=2 时）</text>
+        <rect x="224" y="44" width="300" height="58" rx="6" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="236" y="64" font-size="11.5">LLMEngine + Scheduler(C++) + BlockManager</text><text x="236" y="84" font-size="11.5">driver Worker（cp_rank 0, GPU0）</text>
+        <rect x="610" y="44" width="222" height="58" rx="6" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="622" y="64" font-size="11.5">follower Worker（cp_rank 1, GPU1）</text><text x="622" y="84" font-size="10.5" class="m">while True: method,kw = broadcast()</text>
+        <g stroke="#2F49D8" fill="none" marker-end="url(#ar3)"><line x1="526" y1="66" x2="607" y2="66"></line></g>
+        <text x="566" y="60" text-anchor="middle" font-size="10" fill="#2F49D8">shm 广播</text><text x="566" y="92" text-anchor="middle" font-size="10" fill="#2F49D8">NCCL 张量</text>
+        <rect x="208" y="140" width="640" height="104" rx="9" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="224" y="162" font-weight="600">DP rank 1 … N−1 进程（同构）</text>
+        <text x="224" y="186" font-size="11.5">每个 rank 自己调度、自己管 KV；只在两处同步：</text>
+        <text x="236" y="206" font-size="11.5">① MoE 层的 EP all-to-all（dispatch / combine）</text>
+        <text x="236" y="226" font-size="11.5">② 每步一次 DP all-reduce：还有没有活？这步做 prefill 还是 decode？</text>
+      </g>
+    </svg>

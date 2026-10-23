@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 170" width="860" height="170" color="#111A23"><title>EP8 时每卡要读约 37GB 路由专家权重，EP64 时约 5GB</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="170" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="22" font-weight="600">每张卡每步 decode 要读的路由专家权重（估算）</text>
+        <text x="20" y="62">EP8</text><rect x="80" y="46" width="700" height="26" rx="4" fill="#C4521B" opacity=".85"></rect><text x="90" y="64" fill="#fff" font-size="11">每卡 ~49 个专家 × 40 层 ≈ 37 GB → 8 TB/s 下约 4.6 ms</text>
+        <text x="20" y="108">EP64</text><rect x="80" y="92" width="100" height="26" rx="4" fill="#2F49D8"></rect><text x="190" y="110" font-size="11">每卡 7 个专家 ≈ 5.3 GB → 约 0.66 ms</text>
+        <text x="20" y="146" font-size="10.5" opacity=".85">每个专家 = 3 个 5120×2304 矩阵，FP4 + per-32 scale ≈ 0.53 B/参数，一层约 18.8 MB。大 batch 下几乎每个专家都会被选中，必须整份读一遍。</text>
+        <text x="20" y="162" font-size="10.5" opacity=".85">未计注意力、共享专家、DSpark 等每卡都有的权重。专家数取文档的「decode 每卡 1 个冗余，取整后 EP64 每卡 7 个」。</text>
+      </g>
+    </svg>

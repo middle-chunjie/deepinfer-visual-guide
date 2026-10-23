@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 190" width="860" height="190" color="#111A23"><title>vLLM 每层一份分页 KV；DeepInfer 有两个分配器：块分配器管压缩 KV，槽位分配器管每序列固定大小的滑窗状态</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="190" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="20" font-weight="600" fill="#C4521B">vLLM（标准 GQA 模型）</text>
+        <g fill="#F8E3D7" stroke="#C4521B"><rect x="20" y="32" width="380" height="24" rx="4"></rect><rect x="20" y="60" width="380" height="24" rx="4"></rect><rect x="20" y="88" width="380" height="24" rx="4"></rect></g>
+        <text x="30" y="49" font-size="10.5">layer 0：分页 KV（16 token/块）</text><text x="30" y="77" font-size="10.5">layer 1：分页 KV</text><text x="30" y="105" font-size="10.5">…… 每层一份，同一张块表</text>
+        <text x="20" y="140" font-size="10.5" opacity=".85">一个分配器、一种块；所有 KV 都随长度增长。</text>
+
+        <text x="460" y="20" font-weight="600" fill="#2F49D8">DeepInfer（V4.1）</text>
+        <rect x="460" y="32" width="380" height="52" rx="6" fill="#DCE2FB" stroke="#2F49D8"></rect>
+        <text x="472" y="50" font-weight="600" font-size="11">BlockManager #1：128-token 块</text><text x="472" y="70" font-size="10.5">4 个 source 层的 ca_cache + ica_cache，随长度增长、可落盘</text>
+        <rect x="460" y="92" width="380" height="52" rx="6" fill="#FFFFFF" stroke="#0B8577"></rect>
+        <text x="472" y="110" font-weight="600" font-size="11">BlockManager #2：每序列 1 个 state 槽</text><text x="472" y="130" font-size="10.5">40+3 层的 SWA 环形缓冲 + 压缩器中间态，大小固定</text>
+        <text x="460" y="168" font-size="10.5" opacity=".85">准入一个请求时两边都得分配成功；槽数 = max_num_seqs × 1.2 + 1。</text>
+      </g>
+    </svg>

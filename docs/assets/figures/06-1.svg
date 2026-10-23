@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 270" width="860" height="270" color="#111A23"><title>左：每个请求预留连续的最大长度空间，大量浪费；右：PagedAttention 用块表把逻辑块映射到物理块池中的任意位置</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="270" rx="10" fill="#FFFFFF"/>
+      <g font-size="12">
+        <text x="20" y="22" font-weight="600">按最大长度连续预留</text>
+        <text x="20" y="48" class="m" font-size="11">请求 A</text><rect x="80" y="34" width="300" height="20" rx="3" fill="#E3E8ED"></rect><rect x="80" y="34" width="110" height="20" rx="3" fill="#3D72CF"></rect>
+        <text x="20" y="78" class="m" font-size="11">请求 B</text><rect x="80" y="64" width="300" height="20" rx="3" fill="#E3E8ED"></rect><rect x="80" y="64" width="40" height="20" rx="3" fill="#0B8577"></rect>
+        <text x="20" y="108" class="m" font-size="11">请求 C</text><rect x="80" y="94" width="300" height="20" rx="3" fill="#E3E8ED"></rect><rect x="80" y="94" width="200" height="20" rx="3" fill="#7E46CF"></rect>
+        <text x="20" y="138" class="m" font-size="11">请求 D</text><rect x="80" y="124" width="300" height="20" rx="3" fill="none" stroke="#B8402A" stroke-dasharray="4 3"></rect><text x="230" y="138" text-anchor="middle" font-size="11" fill="#B8402A">装不下，只能排队</text>
+        <text x="20" y="172" font-size="11" opacity=".8">灰色 = 预留了但没用上的显存。实际利用率常常只有 20–40%。</text>
+
+        <text x="460" y="22" font-weight="600">PagedAttention：按块分配</text>
+        <text x="460" y="48" class="m" font-size="11">A 的块表</text>
+        <g class="m" font-size="10.5"><rect x="530" y="34" width="26" height="20" fill="#3D72CF"></rect><text x="543" y="48" text-anchor="middle" fill="#fff">7</text><rect x="558" y="34" width="26" height="20" fill="#3D72CF"></rect><text x="571" y="48" text-anchor="middle" fill="#fff">2</text></g>
+        <text x="460" y="78" class="m" font-size="11">B 的块表</text>
+        <g class="m" font-size="10.5"><rect x="530" y="64" width="26" height="20" fill="#0B8577"></rect><text x="543" y="78" text-anchor="middle" fill="#fff">5</text></g>
+        <text x="460" y="108" class="m" font-size="11">C 的块表</text>
+        <g class="m" font-size="10.5"><rect x="530" y="94" width="26" height="20" fill="#7E46CF"></rect><text x="543" y="108" text-anchor="middle" fill="#fff">0</text><rect x="558" y="94" width="26" height="20" fill="#7E46CF"></rect><text x="571" y="108" text-anchor="middle" fill="#fff">3</text><rect x="586" y="94" width="26" height="20" fill="#7E46CF"></rect><text x="599" y="108" text-anchor="middle" fill="#fff">9</text><rect x="614" y="94" width="26" height="20" fill="#7E46CF"></rect><text x="627" y="108" text-anchor="middle" fill="#fff">4</text></g>
+        <text x="460" y="138" class="m" font-size="11">D 的块表</text>
+        <g class="m" font-size="10.5"><rect x="530" y="124" width="26" height="20" fill="#C47A0E"></rect><text x="543" y="138" text-anchor="middle" fill="#fff">1</text><rect x="558" y="124" width="26" height="20" fill="#C47A0E"></rect><text x="571" y="138" text-anchor="middle" fill="#fff">8</text></g>
+        <text x="460" y="176">物理块池（显存）</text>
+        <g class="m" font-size="10.5">
+          <rect x="460" y="186" width="36" height="30" fill="#7E46CF"></rect><rect x="498" y="186" width="36" height="30" fill="#C47A0E"></rect><rect x="536" y="186" width="36" height="30" fill="#3D72CF"></rect><rect x="574" y="186" width="36" height="30" fill="#7E46CF"></rect><rect x="612" y="186" width="36" height="30" fill="#7E46CF"></rect><rect x="650" y="186" width="36" height="30" fill="#0B8577"></rect><rect x="688" y="186" width="36" height="30" fill="#E3E8ED"></rect><rect x="726" y="186" width="36" height="30" fill="#3D72CF"></rect><rect x="764" y="186" width="36" height="30" fill="#C47A0E"></rect><rect x="802" y="186" width="36" height="30" fill="#7E46CF"></rect>
+          <g fill="#fff" text-anchor="middle"><text x="478" y="205">0</text><text x="516" y="205">1</text><text x="554" y="205">2</text><text x="592" y="205">3</text><text x="630" y="205">4</text><text x="668" y="205">5</text><text x="744" y="205">7</text><text x="782" y="205">8</text><text x="820" y="205">9</text></g><text x="706" y="205" text-anchor="middle">6</text>
+        </g>
+        <text x="460" y="238" font-size="11" opacity=".8">块可以放在任意位置，只在最后一块有少量浪费；空闲块（6）立刻给新请求用。</text>
+        <text x="460" y="256" font-size="11" opacity=".8">注意力 kernel 按块表去「跳着读」KV，这就是 Paged Attention。</text>
+      </g>
+    </svg>

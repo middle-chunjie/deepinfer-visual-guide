@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 250" width="860" height="250" color="#111A23"><title>prefill 一次处理整个 prompt；decode 每步只处理一个新 token，但要读全部权重和之前所有 token 的 KV</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="250" rx="10" fill="#FFFFFF"/>
+      <defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path></marker></defs>
+      <g font-size="12">
+        <text x="20" y="22" font-weight="600">Prefill（预填充）</text>
+        <g fill="#3D72CF">
+          <rect x="20" y="34" width="34" height="26" rx="3"></rect><rect x="58" y="34" width="34" height="26" rx="3"></rect><rect x="96" y="34" width="34" height="26" rx="3"></rect><rect x="134" y="34" width="34" height="26" rx="3"></rect><rect x="172" y="34" width="34" height="26" rx="3"></rect><rect x="210" y="34" width="34" height="26" rx="3"></rect>
+        </g>
+        <g fill="#fff" font-size="11" text-anchor="middle"><text x="37" y="51">请</text><text x="75" y="51">介</text><text x="113" y="51">绍</text><text x="151" y="51">一</text><text x="189" y="51">下</text><text x="227" y="51">你</text></g>
+        <rect x="290" y="28" width="150" height="38" rx="7" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="365" y="52" text-anchor="middle">1 次 forward</text>
+        <line x1="246" y1="47" x2="286" y2="47" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ar4)"></line>
+        <line x1="442" y1="47" x2="482" y2="47" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ar4)"></line>
+        <rect x="486" y="34" width="34" height="26" rx="3" fill="#C47A0E"></rect><text x="503" y="51" text-anchor="middle" fill="#fff" font-size="11">我</text>
+        <text x="540" y="44" font-size="11">一次算完 6 个 token，矩阵乘很「胖」</text><text x="540" y="60" font-size="11">→ 算力瓶颈（compute-bound）；决定首 token 延迟 TTFT</text>
+
+        <text x="20" y="108" font-weight="600">Decode（解码）</text>
+        <g font-size="11">
+          <rect x="20" y="120" width="34" height="26" rx="3" fill="#C47A0E"></rect><text x="37" y="137" text-anchor="middle" fill="#fff">我</text>
+          <rect x="70" y="114" width="96" height="38" rx="7" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="118" y="137" text-anchor="middle">forward</text>
+          <rect x="182" y="120" width="34" height="26" rx="3" fill="#C47A0E"></rect><text x="199" y="137" text-anchor="middle" fill="#fff">是</text>
+          <rect x="232" y="114" width="96" height="38" rx="7" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="280" y="137" text-anchor="middle">forward</text>
+          <rect x="344" y="120" width="44" height="26" rx="3" fill="#C47A0E"></rect><text x="366" y="137" text-anchor="middle" fill="#fff">Deep</text>
+          <rect x="404" y="114" width="96" height="38" rx="7" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="452" y="137" text-anchor="middle">forward</text>
+          <text x="516" y="137">…… 每步 1 个 token</text>
+        </g>
+        <g stroke="currentColor" stroke-opacity=".6" marker-end="url(#ar4)"><line x1="55" y1="133" x2="68" y2="133"></line><line x1="167" y1="133" x2="180" y2="133"></line><line x1="217" y1="133" x2="230" y2="133"></line><line x1="329" y1="133" x2="342" y2="133"></line><line x1="389" y1="133" x2="402" y2="133"></line></g>
+        <rect x="20" y="172" width="820" height="66" rx="8" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="36" y="194" font-size="11.5">每一步 decode 都要：① 从显存读出</text></g></svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 170" width="860" height="170" color="#111A23"><title>EAGLE 类草稿需要 5 次串行小 forward；DSpark 草稿一次 forward 出 5 个</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="170" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="22" font-weight="600" fill="#C4521B">自回归草稿（EAGLE / MTP 类，vLLM 常用）</text>
+        <g fill="#F8E3D7" stroke="#C4521B"><rect x="20" y="34" width="56" height="26" rx="4"></rect><rect x="82" y="34" width="56" height="26" rx="4"></rect><rect x="144" y="34" width="56" height="26" rx="4"></rect><rect x="206" y="34" width="56" height="26" rx="4"></rect><rect x="268" y="34" width="56" height="26" rx="4"></rect></g>
+        <g font-size="10.5" text-anchor="middle"><text x="48" y="51">猜 1</text><text x="110" y="51">猜 2</text><text x="172" y="51">猜 3</text><text x="234" y="51">猜 4</text><text x="296" y="51">猜 5</text></g>
+        <rect x="336" y="34" width="250" height="26" rx="4" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="461" y="51" text-anchor="middle" font-size="10.5">大模型验证</text>
+        <text x="600" y="51" font-size="10.5">5 次串行小 forward + 1 次大 forward</text>
+
+        <text x="20" y="96" font-weight="600" fill="#2F49D8">并行块草稿（DSpark，DeepInfer）</text>
+        <rect x="20" y="108" width="80" height="26" rx="4" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="60" y="125" text-anchor="middle" font-size="10.5">一次出 5 个</text>
+        <rect x="112" y="108" width="250" height="26" rx="4" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="237" y="125" text-anchor="middle" font-size="10.5">大模型验证（长度按置信度变）</text>
+        <text x="376" y="125" font-size="10.5">输入块 = [刚采出的 token, noise, noise, noise, noise]，3 层一次 forward</text>
+        <text x="20" y="160" font-size="10.5" opacity=".8">示意，不按比例。草稿模型很小，但每次 forward 都有固定的 kernel 发射与通信开销，串行 5 次比 1 次贵。</text>
+      </g>
+    </svg>

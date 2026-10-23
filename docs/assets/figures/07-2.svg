@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 260" width="860" height="260" color="#111A23"><title>vLLM V1：API Server 进程负责 HTTP 和分词，通过 ZMQ 与 EngineCore 进程通信；EngineCore 跑调度器和 KV 管理器，驱动每张 GPU 一个的 Worker 进程</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="260" rx="10" fill="#FFFFFF"/>
+      <defs><marker id="ar7v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path></marker></defs>
+      <g font-size="12">
+        <text x="20" y="20" font-weight="600" fill="#C4521B">vLLM V1</text>
+        <rect x="20" y="32" width="190" height="96" rx="8" fill="#F8E3D7" stroke="#C4521B"></rect>
+        <text x="34" y="54" font-weight="600">API Server 进程</text><text x="34" y="74" font-size="11">HTTP / OpenAI 接口</text><text x="34" y="92" font-size="11">分词、多模态加载</text><text x="34" y="110" font-size="11">反分词、流式返回</text>
+        <rect x="270" y="32" width="250" height="96" rx="8" fill="#F8E3D7" stroke="#C4521B"></rect>
+        <text x="284" y="54" font-weight="600">EngineCore 进程（每 DP rank 一个）</text><text x="284" y="74" font-size="11">忙循环：schedule → execute → update</text><text x="284" y="92" font-size="11">Scheduler（Python）+ KVCacheManager</text><text x="284" y="110" font-size="11">前缀缓存：块哈希 + LRU</text>
+        <rect x="580" y="32" width="260" height="96" rx="8" fill="#F8E3D7" stroke="#C4521B"></rect>
+        <text x="594" y="54" font-weight="600">GPU Worker 进程（每卡一个）</text><text x="594" y="74" font-size="11">GPUModelRunner：持久化 batch</text><text x="594" y="92" font-size="11">torch.compile + CUDA Graph</text><text x="594" y="110" font-size="11">attention backend 可插拔</text>
+        <g stroke="currentColor" stroke-opacity=".6" fill="none" marker-end="url(#ar7v)" marker-start="url(#ar7v)"><line x1="214" y1="80" x2="266" y2="80"></line><line x1="524" y1="80" x2="576" y2="80"></line></g>
+        <text x="240" y="72" text-anchor="middle" font-size="10" class="m">ZMQ</text><text x="550" y="72" text-anchor="middle" font-size="10" class="m">RPC/shm</text>
+
+        <text x="20" y="168" font-weight="600" fill="#2F49D8">DeepInfer（离线版）</text>
+        <rect x="20" y="180" width="500" height="70" rx="8" fill="#DCE2FB" stroke="#2F49D8"></rect>
+        <text x="34" y="202" font-weight="600">一个进程：LLM + LLMEngine + C++ Scheduler + driver Worker</text>
+        <text x="34" y="222" font-size="11">分词在 add_request 里同步做；没有 API Server（编解码交给外部的 DeepSeek Recipe）</text>
+        <text x="34" y="240" font-size="11">调度器是 C++，driver worker 与引擎同进程，省掉一次跨进程传输</text>
+        <rect x="580" y="180" width="260" height="70" rx="8" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="594" y="202" font-weight="600">CP follower 进程（cp&gt;1 才有）</text><text x="594" y="222" font-size="11">共享内存收方法名</text><text x="594" y="240" font-size="11">NCCL 收输入张量</text>
+        <line x1="524" y1="215" x2="576" y2="215" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ar7v)"></line>
+      </g>
+    </svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 200" width="860" height="200" color="#111A23"><title>草稿模型猜出 5 个 token，大模型一次 forward 验证 6 个位置，接受前 3 个并在第 4 个位置重采样</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="200" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="22" font-weight="600">一个请求的一步</text>
+        <text x="20" y="54">输入</text>
+        <g font-size="11" text-anchor="middle">
+          <rect x="80" y="40" width="70" height="24" rx="4" fill="#C47A0E"></rect><text x="115" y="56" fill="#fff">上步 token</text>
+          <rect x="156" y="40" width="56" height="24" rx="4" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="184" y="56">草稿1</text>
+          <rect x="218" y="40" width="56" height="24" rx="4" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="246" y="56">草稿2</text>
+          <rect x="280" y="40" width="56" height="24" rx="4" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="308" y="56">草稿3</text>
+          <rect x="342" y="40" width="56" height="24" rx="4" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="370" y="56">草稿4</text>
+          <rect x="404" y="40" width="56" height="24" rx="4" fill="#DCE2FB" stroke="#2F49D8"></rect><text x="432" y="56">草稿5</text>
+        </g>
+        <rect x="80" y="78" width="380" height="30" rx="6" fill="#FFFFFF" stroke="currentColor" stroke-opacity=".5"></rect><text x="270" y="98" text-anchor="middle">大模型 1 次 forward，6 个位置并行（耗时 ≈ 只算 1 个）</text>
+        <text x="20" y="140">验证</text>
+        <g font-size="11" text-anchor="middle">
+          <rect x="156" y="126" width="56" height="24" rx="4" fill="#2E8A47"></rect><text x="184" y="142" fill="#fff">✓</text>
+          <rect x="218" y="126" width="56" height="24" rx="4" fill="#2E8A47"></rect><text x="246" y="142" fill="#fff">✓</text>
+          <rect x="280" y="126" width="56" height="24" rx="4" fill="#2E8A47"></rect><text x="308" y="142" fill="#fff">✓</text>
+          <rect x="342" y="126" width="56" height="24" rx="4" fill="#B8402A"></rect><text x="370" y="142" fill="#fff">✗ 重采样</text>
+          <rect x="404" y="126" width="56" height="24" rx="4" fill="#E3E8ED"></rect><text x="432" y="142" opacity=".6">作废</text>
+        </g>
+        <text x="80" y="180" font-size="11">本步产出 4 个 token（3 个草稿 + 1 个重采样的），而不投机只能产出 1 个。</text>
+        <rect x="520" y="40" width="320" height="110" rx="8" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="536" y="62" font-weight="600">为什么输出质量不变</text>
+        <text x="536" y="84" font-size="10.5">接受规则保证：最终 token 的分布</text>
+        <text x="536" y="102" font-size="10.5">和直接用大模型采样完全一样。</text>
+        <text x="536" y="124" font-size="10.5">草稿只影响「一步能前进几个」，</text>
+        <text x="536" y="142" font-size="10.5">不影响「生成什么」。</text>
+      </g>
+    </svg>

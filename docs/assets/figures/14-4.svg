@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 210" width="860" height="210" color="#111A23"><title>拒绝采样示例：草稿 token B 的目标概率 0.2、草稿概率 0.4，接受概率 0.5；拒绝时从残差分布重采样</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="210" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="20" font-weight="600">某个位置的 5 个候选 token</text>
+        <g class="m" font-size="11" text-anchor="middle"><text x="70" y="170">A</text><text x="130" y="170">B</text><text x="190" y="170">C</text><text x="250" y="170">D</text><text x="310" y="170">E</text></g>
+        <line x1="40" y1="156" x2="340" y2="156" stroke="currentColor" stroke-opacity=".3"></line>
+        <g fill="#3D72CF"><rect x="52" y="56" width="16" height="100"></rect><rect x="112" y="116" width="16" height="40"></rect><rect x="172" y="126" width="16" height="30"></rect><rect x="232" y="136" width="16" height="20"></rect><rect x="292" y="146" width="16" height="10"></rect></g>
+        <g fill="#C47A0E"><rect x="72" y="96" width="16" height="60"></rect><rect x="132" y="76" width="16" height="80"></rect><rect x="192" y="136" width="16" height="20"></rect><rect x="252" y="126" width="16" height="30"></rect><rect x="312" y="146" width="16" height="10"></rect></g>
+        <rect x="128" y="70" width="24" height="90" fill="none" stroke="#111A23" stroke-dasharray="3 2"></rect>
+        <text x="40" y="196" font-size="10.5"><tspan fill="#3D72CF">■ 大模型 p</tspan>  <tspan fill="#C47A0E">■ 草稿 q</tspan>   草稿采到了 B</text>
+        <rect x="380" y="34" width="460" height="150" rx="8" fill="#FFFFFF" stroke="#CDD5DD"></rect>
+        <text x="396" y="58" font-weight="600">规则</text>
+        <text x="396" y="82" font-size="11">1. 接受概率 = min(1, p(B)/q(B)) = min(1, 0.2/0.4) = 0.5</text>
+        <text x="396" y="104" font-size="11">2. 抽 U~均匀(0,1)，U &lt; 0.5 就接受 B，继续看下一个草稿</text>
+        <text x="396" y="126" font-size="11">3. 否则从残差 max(p−q, 0) 归一化后重采样：A 0.8、C 0.2</text>
+        <text x="396" y="148" font-size="11">4. 被拒位置之后的草稿全部作废；全接受时再多采 1 个</text>
+        <text x="396" y="172" font-size="10.5" opacity=".8">p = [.50 .20 .15 .10 .05]   q = [.30 .40 .10 .15 .05]</text>
+      </g>
+    </svg>

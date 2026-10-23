@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 260" width="860" height="260" color="#111A23"><title>左：张量并行，每层每个矩阵切到 4 卡，每层两次 all-reduce，MLA 的单头 KV 在每卡复制；右：DP 注意力加 EP MoE，注意力各卡独立，MoE 层 all-to-all</title><style>text{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei','IBM Plex Sans',sans-serif}text:not([fill]){fill:#111A23}.m{font-family:'JetBrains Mono',Menlo,Consolas,monospace}</style><rect x="0" y="0" width="860" height="260" rx="10" fill="#FFFFFF"/>
+      <g font-size="11.5">
+        <text x="20" y="20" font-weight="600">张量并行 TP=4（vLLM 稠密模型常用）</text>
+        <g fill="#FFFFFF" stroke="#CDD5DD"><rect x="20" y="32" width="92" height="150" rx="6"></rect><rect x="118" y="32" width="92" height="150" rx="6"></rect><rect x="216" y="32" width="92" height="150" rx="6"></rect><rect x="314" y="32" width="92" height="150" rx="6"></rect></g>
+        <g class="m" font-size="10" text-anchor="middle"><text x="66" y="48">GPU0</text><text x="164" y="48">GPU1</text><text x="262" y="48">GPU2</text><text x="360" y="48">GPU3</text></g>
+        <g fill="#F8E3D7" stroke="#C4521B"><rect x="28" y="56" width="76" height="26" rx="4"></rect><rect x="126" y="56" width="76" height="26" rx="4"></rect><rect x="224" y="56" width="76" height="26" rx="4"></rect><rect x="322" y="56" width="76" height="26" rx="4"></rect></g>
+        <g font-size="10" text-anchor="middle"><text x="66" y="73">1/4 个矩阵</text><text x="164" y="73">1/4 个矩阵</text><text x="262" y="73">1/4 个矩阵</text><text x="360" y="73">1/4 个矩阵</text></g>
+        <rect x="20" y="92" width="386" height="20" rx="4" fill="#C4521B" opacity=".8"></rect><text x="213" y="106" text-anchor="middle" fill="#fff" font-size="10.5">all-reduce（每层 2 次）</text>
+        <g fill="#B8402A" opacity=".85"><rect x="28" y="122" width="76" height="22" rx="4"></rect><rect x="126" y="122" width="76" height="22" rx="4"></rect><rect x="224" y="122" width="76" height="22" rx="4"></rect><rect x="322" y="122" width="76" height="22" rx="4"></rect></g>
+        <g font-size="10" text-anchor="middle" fill="#fff"><text x="66" y="137">同一份 KV</text><text x="164" y="137">同一份 KV</text><text x="262" y="137">同一份 KV</text><text x="360" y="137">同一份 KV</text></g>
+        <text x="28" y="166" font-size="10.5">4 卡跑同一个 batch</text>
+        <text x="20" y="206" font-size="10.5">MLA 只有 1 个 KV 头，切不开：</text><text x="20" y="222" font-size="10.5">每张卡都得存一整份 latent KV，显存浪费 4 倍。</text>
+        <text x="20" y="238" font-size="10.5">而且每层的 all-reduce 都在关键路径上。</text>
+
+        <text x="450" y="20" font-weight="600">DP 注意力 + EP MoE（DeepInfer）</text>
+        <g fill="#FFFFFF" stroke="#CDD5DD"><rect x="450" y="32" width="92" height="150" rx="6"></rect><rect x="548" y="32" width="92" height="150" rx="6"></rect><rect x="646" y="32" width="92" height="150" rx="6"></rect><rect x="744" y="32" width="96" height="150" rx="6"></rect></g>
+        <g class="m" font-size="10" text-anchor="middle"><text x="496" y="48">GPU0</text><text x="594" y="48">GPU1</text><text x="692" y="48">GPU2</text><text x="792" y="48">GPU3</text></g>
+        <g fill="#DCE2FB" stroke="#2F49D8"><rect x="458" y="56" width="76" height="26" rx="4"></rect><rect x="556" y="56" width="76" height="26" rx="4"></rect><rect x="654" y="56" width="76" height="26" rx="4"></rect><rect x="752" y="56" width="80" height="26" rx="4"></rect></g>
+        <g font-size="10" text-anchor="middle"><text x="496" y="73">自己的 batch</text><text x="594" y="73">自己的 batch</text><text x="692" y="73">自己的 batch</text><text x="792" y="73">自己的 batch</text></g>
+        <rect x="450" y="92" width="390" height="20" rx="4" fill="#7E46CF" opacity=".8"></rect><text x="645" y="106" text-anchor="middle" fill="#fff" font-size="10.5">MoE 层 all-to-all：token 发给持有对应专家的卡，再收回</text>
+        <g fill="#FFFFFF" stroke="#7E46CF"><rect x="458" y="122" width="76" height="22" rx="4"></rect><rect x="556" y="122" width="76" height="22" rx="4"></rect><rect x="654" y="122" width="76" height="22" rx="4"></rect><rect x="752" y="122" width="80" height="22" rx="4"></rect></g>
+        <g font-size="10" text-anchor="middle"><text x="496" y="137">专家 0–95</text><text x="594" y="137">专家 96–191</text><text x="692" y="137">专家 192–287</text><text x="792" y="137">专家 288–383</text></g>
+        <text x="458" y="166" font-size="10.5">各卡 KV 只存自己请求的</text>
+        <text x="450" y="206" font-size="10.5">注意力权重每卡一份（相对专家很小），KV 不重复；</text><text x="450" y="222" font-size="10.5">通信只发生在 MoE 层，且可以与计算重叠。</text>
+        <text x="450" y="238" font-size="10.5">代价：所有卡必须步调一致（第 09 节）。</text>
+      </g>
+    </svg>
