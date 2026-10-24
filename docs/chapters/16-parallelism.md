@@ -4,6 +4,38 @@
 | --- | --- | --- |
 | 一张卡装不下、也跑不快整个模型。拆分方式决定了每张卡要读多少权重、存多少 KV、每层要通信几次。目标是第 05 节的杠杆 ④：每卡读的权重尽量少，同时通信尽量少。 | 稠密模型默认 TP（单机内把每个矩阵切开）；MoE 可开 DP 注意力 + EP，all-to-all 后端可选 DeepEP 等，EPLB 可选。 | 不用 TP：注意力纯 DP，MoE 纯 EP；decode 用 64–128 卡的宽 EP；长 prompt 用 zigzag CP；EPLB 复制热点专家。 |
 
+## 先看懂：并行方式和通信方式
+
+「并行」就是把模型或数据拆给多张卡一起做。一旦拆开，卡之间就要交换数据，这就是**通信**。不同的拆法对应不同的通信方式，通信的次数和数据量决定了这种拆法划不划算。先认识最常见的几种通信，后面读到这些名字就不会卡住：
+
+![5 种集合通信的数据流向](../assets/figures/16-0.svg)
+
+<small>每行是一张卡（G0–G3），方块是它手里的数据，颜色区分数据来源。all-to-all 里方块的颜色表示「要发给谁」：通信之后，每张卡手里只剩下发给它自己的那几份。</small>
+
+每种并行用哪种通信，对照下表：
+
+| 并行方式 | 切的是什么 | 每卡持有 | 主要通信 | 频率 | DeepInfer |
+| --- | --- | --- | --- | --- | --- |
+| DP 数据并行 | 请求分开，模型整份复制 | 每卡一份完整模型（对注意力而言） | 推理时几乎不需要；DeepInfer 每步一次 all-reduce 做 prefill / decode 投票 | 低 | 注意力用 DP |
+| TP 张量并行 | 每个矩阵切开 | 每个矩阵的 1/N | all-reduce，每层 2 次 | 高，且在关键路径上 | 不用 |
+| PP 流水线并行 | 按层切成几段 | 连续的若干层 | send/recv，传段与段之间的激活 | 每段边界一次 | 本导读没有在 DeepInfer 里发现 PP 的用法 |
+| EP 专家并行 | MoE 的专家分到不同卡 | 一部分专家 | all-to-all，每个 MoE 层 2 次（dispatch + combine） | 高，但可与计算重叠 | MoE 层用，decode 64–128 卡 |
+| CP 上下文并行 | 一条长序列的 token 切成几段 | 序列的一段 | all-gather K/V | 每层注意力一次 | 长 prompt 的 prefill 用 |
+
+> [!NOTE]
+> **为什么 all-to-all 最贵：**all-reduce 和 all-gather 里每张卡传的数据大小相同，有成熟的环形、树形算法；all-to-all 里每张卡要和其他所有卡通信，64 卡就是 63 个对象，每份数据小而数量多。再加上各专家收到的 token 数不均匀，最慢的那张卡决定整步耗时。所以 EP 需要高速互联（NVLink 域内）、全组步调一致（第 09 节）和负载均衡（本节末尾的 EPLB）。这是通用的通信原理，不是 DeepInfer 源码里的结论。
+
+数据具体走哪条线、用哪个库：
+
+| 链路 / 库 | 是什么 | 说明 |
+| --- | --- | --- |
+| NVLink | 同一节点或超节点内的 GPU 之间 | 最快，EP 的 all-to-all 希望留在这个范围内 |
+| PCIe | GPU 与 CPU、主板之间 | 较慢 |
+| InfiniBand / RoCE | 跨节点的网络 | 比 NVLink 慢，跨节点通信要尽量少 |
+| 共享内存 / ZMQ | 同一台机器上的 CPU 进程之间 | 用于 driver 向 follower 广播方法名等控制消息 |
+| NCCL / HCCL | NVIDIA / 昇腾的多卡集合通信库 | all-reduce、all-gather 等都由它实现 |
+| DeepEP | 专为 MoE 的 dispatch / combine 优化的通信库 | EP 的 all-to-all 常用它 |
+
 ## TP 和 DP+EP 的区别
 
 ![左：张量并行，每层每个矩阵切到 4 卡，每层两次 all-reduce，MLA 的单头 KV 在每卡复制；右：DP 注意力加 EP MoE，注意力各卡独立，MoE 层 all-to-all](../assets/figures/16-1.svg)
