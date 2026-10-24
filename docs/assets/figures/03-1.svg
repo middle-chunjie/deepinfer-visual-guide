@@ -9,7 +9,7 @@
         <rect x="224" y="44" width="300" height="58" rx="6" fill="#FFFFFF" stroke="#CDD5DD"></rect>
         <text x="236" y="64" font-size="11.5">LLMEngine + Scheduler(C++) + BlockManager</text><text x="236" y="84" font-size="11.5">driver Worker（cp_rank 0, GPU0）</text>
         <rect x="610" y="44" width="222" height="58" rx="6" fill="#FFFFFF" stroke="#CDD5DD"></rect>
-        <text x="622" y="64" font-size="11.5">follower Worker（cp_rank 1, GPU1）</text><text x="622" y="84" font-size="10.5" class="m">while True: method,kw = broadcast()</text>
+        <text x="622" y="64" font-size="11.5">follower Worker（cp_rank 1, GPU1）</text><text x="622" y="84" font-size="10.5" class="m">while True: broadcast()</text>
         <g stroke="#2F49D8" fill="none" marker-end="url(#ar3)"><line x1="526" y1="66" x2="607" y2="66"></line></g>
         <text x="566" y="60" text-anchor="middle" font-size="10" fill="#2F49D8">shm 广播</text><text x="566" y="92" text-anchor="middle" font-size="10" fill="#2F49D8">NCCL 张量</text>
         <rect x="208" y="140" width="640" height="104" rx="9" fill="#FFFFFF" stroke="#CDD5DD"></rect>

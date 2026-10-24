@@ -338,7 +338,7 @@ details[open] summary{margin-bottom:6px}
         <rect x="224" y="44" width="300" height="58" rx="6" fill="var(--surface)" stroke="var(--line)"/>
         <text x="236" y="64" font-size="11.5">LLMEngine + Scheduler(C++) + BlockManager</text><text x="236" y="84" font-size="11.5">driver Worker（cp_rank 0, GPU0）</text>
         <rect x="610" y="44" width="222" height="58" rx="6" fill="var(--surface)" stroke="var(--line)"/>
-        <text x="622" y="64" font-size="11.5">follower Worker（cp_rank 1, GPU1）</text><text x="622" y="84" font-size="10.5" class="m">while True: method,kw = broadcast()</text>
+        <text x="622" y="64" font-size="11.5">follower Worker（cp_rank 1, GPU1）</text><text x="622" y="84" font-size="10.5" class="m">while True: broadcast()</text>
         <g stroke="var(--accent)" fill="none" marker-end="url(#ar3)"><line x1="526" y1="66" x2="607" y2="66"/></g>
         <text x="566" y="60" text-anchor="middle" font-size="10" fill="var(--accent)">shm 广播</text><text x="566" y="92" text-anchor="middle" font-size="10" fill="var(--accent)">NCCL 张量</text>
         <rect x="208" y="140" width="640" height="104" rx="9" fill="var(--surface)" stroke="var(--line)"/>
@@ -396,7 +396,7 @@ details[open] summary{margin-bottom:6px}
         </g>
         <g stroke="currentColor" stroke-opacity=".6" marker-end="url(#ar4)"><line x1="55" y1="133" x2="68" y2="133"/><line x1="167" y1="133" x2="180" y2="133"/><line x1="217" y1="133" x2="230" y2="133"/><line x1="329" y1="133" x2="342" y2="133"/><line x1="389" y1="133" x2="402" y2="133"/></g>
         <rect x="20" y="172" width="820" height="66" rx="8" fill="var(--surface)" stroke="var(--line)"/>
-        <text x="36" y="194" font-size="11.5">每一步 decode 都要：① 从显存读出<b>全部模型权重</b>（几十到上百 GB）；② 读出这个请求之前所有 token 的 <b>KV cache</b>；</text>
+        <text x="36" y="194" font-size="11.5">每一步 decode 都要：① 从显存读出<tspan font-weight="700">全部模型权重</tspan>（几十到上百 GB）；② 读出这个请求之前所有 token 的 <tspan font-weight="700">KV cache</tspan>；</text>
         <text x="36" y="214" font-size="11.5">但只为 1 个 token 做计算。读得多、算得少 → <tspan font-weight="600">显存带宽瓶颈（memory-bound）</tspan>；决定每 token 间隔 TPOT 和总吞吐。</text>
         <text x="36" y="232" font-size="11" opacity=".75">（下一节用一个可调的计算器把这句话量化）</text>
       </g>
@@ -502,7 +502,7 @@ Llama-3.1-70B（GQA，BF16）= 80 × 8 × 128 × 2 × 2 B = 320 KB / token  → 
   <h3>① 连续批处理：每一步都可以换人</h3>
   <p>最朴素的做法是「静态批」：凑够一批请求一起跑，等最长的那个结束才放下一批进来。短请求早早结束后，它的位置一直空着。Orca（OSDI 2022）提出<b>迭代级调度</b>：每一步 forward 之后都重新调度，结束的请求立刻腾出位置，新请求下一步就能加入。vLLM 把它和 PagedAttention 结合起来，成为今天所有框架的标配。</p>
   <figure>
-    <div class="scroll"><svg id="cbsvg" viewBox="0 0 860 250" role="img" aria-label="静态批与连续批对比：静态批有大量空闲槽位，连续批几乎没有"></svg></div>
+    <div class="scroll"><svg id="cbsvg" viewBox="0 0 860 264" role="img" aria-label="静态批与连续批对比：静态批有大量空闲槽位，连续批几乎没有"></svg></div>
     <div class="legend"><span><i style="background:var(--c2)"></i>prefill（请求的第一步）</span><span><i style="background:var(--swa)"></i>decode</span><span><i style="background:var(--idle);opacity:.3"></i>空闲槽位</span></div>
     <figcaption>4 个槽位、10 个请求（输出长度 2–8 步），R 编号标在每个请求的第一步。纵向是槽位，横向是 step。静态批在第一批里最长的请求跑完前，其他槽位一直空着；连续批在请求结束的下一步就把新请求放进来。</figcaption>
   </figure>
@@ -677,7 +677,7 @@ Llama-3.1-70B（GQA，BF16）= 80 × 8 × 128 × 2 × 2 B = 320 KB / token  → 
   <h3>先看标准 Transformer 层，再看 V4.1 改了什么</h3>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 860 300" role="img" aria-label="上：标准 Transformer 层，一条残差流；下：V4.1 层，4 条残差流，每个子层前后各有一次 HC 混合">
+    <svg viewBox="0 0 860 316" role="img" aria-label="上：标准 Transformer 层，一条残差流；下：V4.1 层，4 条残差流，每个子层前后各有一次 HC 混合">
       <defs><marker id="ar11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
       <g font-size="12">
         <text x="20" y="20" font-weight="600">标准 Transformer 层（Llama 等）</text>
@@ -701,7 +701,7 @@ Llama-3.1-70B（GQA，BF16）= 80 × 8 × 128 × 2 × 2 B = 320 KB / token  → 
         <g stroke="currentColor" stroke-opacity=".6" fill="none" marker-end="url(#ar11)">
           <line x1="112" y1="198" x2="112" y2="216"/><line x1="212" y1="198" x2="212" y2="216"/><line x1="250" y1="238" x2="266" y2="238"/><line x1="408" y1="238" x2="424" y2="238"/><line x1="464" y1="216" x2="464" y2="200"/><line x1="558" y1="198" x2="558" y2="216"/><line x1="596" y1="238" x2="612" y2="238"/><line x1="754" y1="238" x2="770" y2="238"/><line x1="806" y1="216" x2="806" y2="200"/>
         </g>
-        <text x="20" y="284" font-size="10.5" opacity=".85">HC pre：用可学习系数把 4 路混成 1 路送进子层；HC post：把子层输出按系数写回 4 路；残差混合矩阵经 Sinkhorn 迭代约束（mHC）。hc_shifted=True 时每个子层复用上一子层算好的混合，省一次 GEMM。</text>
+        <text x="20" y="284" font-size="10.5" opacity=".85">HC pre：用可学习系数把 4 路混成 1 路送进子层；HC post：把子层输出按系数写回 4 路；残差混合矩阵经 Sinkhorn 迭代约束（mHC）。</text><text x="20" y="300" font-size="10.5" opacity=".85">hc_shifted=True 时每个子层复用上一子层算好的混合，省一次 GEMM。</text>
       </g>
     </svg>
     </div>
@@ -929,7 +929,7 @@ Llama-3.1-70B（GQA，BF16）= 80 × 8 × 128 × 2 × 2 B = 320 KB / token  → 
     <div class="ctrl"><button type="button" id="vRand">换一组置信度</button><button type="button" id="vHigh">高接受场景</button><button type="button" id="vLow">低接受场景</button></div>
     <div class="scroll"><div class="vgrid" id="vgrid"></div></div>
     <div class="vstat" id="vstat"></div>
-    <div class="scroll"><svg id="vchart" style="max-width:620px" viewBox="0 0 560 180" role="img" aria-label="每个 total_q 对应的估算吞吐"></svg></div>
+    <div class="scroll"><svg id="vchart" style="max-width:760px" viewBox="0 0 560 180" role="img" aria-label="每个 total_q 对应的估算吞吐"></svg></div>
     <figcaption>每格上方是该位置的累乘接受率，下方小字是置信度头原始输出；蓝框 = 本步被选中验证。耗时曲线为示意：graph 尺寸按 <code>build_graph_batch_sizes(24, 8)</code> 分桶为 1/2/4/8/16/24，耗时 = 6 + 0.4×graph + 1（sampler）。吞吐曲线在同一个桶内阶梯上升，跨桶时下跌（多付了一整档 padding）。真实实现里选总数用 N−2 步的接受率、分配到请求用 N−1 步的，这里简化为同一组。</figcaption>
   </figure>
   <p>官方文档给的生产数据：变长验证让每步平均验证长度从 5 降到 3.2–4.4，平均接受长度基本不变（3.29 → 3.20），在每卡约 60 并发时吞吐提升约 5%，并发越高收益越大（96 并发 +11%）。这符合第 05 节的直觉：并发越高，GPU 越接近算力瓶颈，「多验证几个几乎免费」就越不成立，省下的验证算力越值钱。</p>
@@ -1240,7 +1240,7 @@ DEEPINFER_ENABLE_MTP_VARLEN=1 python examples/benchmark.py --decode_num_requests
     for(var r=0;r<lens.length;r++){var s2=0;for(var k=1;k<S;k++)if(free[k]<free[s2])s2=k;place(B,s2,free[s2],r);free[s2]+=lens[r]}
     grid(26,"静态批（等一整批跑完才换下一批）",A);
     grid(150,"连续批（vLLM / DeepInfer 都是）",B);
-    for(var t=0;t<N;t++)h+='<text x="'+(x0+t*cw+cw/2-1)+'" y="246" font-size="9.5" text-anchor="middle" class="m" opacity=".6">'+t+'</text>';
+    for(var t=0;t<N;t++)h+='<text x="'+(x0+t*cw+cw/2-1)+'" y="260" font-size="9.5" text-anchor="middle" class="m" opacity=".6">'+t+'</text>';
     svg.innerHTML=h;
   })();
 

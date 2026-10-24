@@ -24,4 +24,4 @@
         </g>
         <g stroke="currentColor" stroke-opacity=".6" marker-end="url(#ar4)"><line x1="55" y1="133" x2="68" y2="133"></line><line x1="167" y1="133" x2="180" y2="133"></line><line x1="217" y1="133" x2="230" y2="133"></line><line x1="329" y1="133" x2="342" y2="133"></line><line x1="389" y1="133" x2="402" y2="133"></line></g>
         <rect x="20" y="172" width="820" height="66" rx="8" fill="#FFFFFF" stroke="#CDD5DD"></rect>
-        <text x="36" y="194" font-size="11.5">每一步 decode 都要：① 从显存读出</text></g></svg>
+        <text x="36" y="194" font-size="11.5">每一步 decode 都要：① 从显存读出<tspan font-weight="700">全部模型权重</tspan>（几十到上百 GB）；② 读出这个请求之前所有 token 的 <tspan font-weight="700">KV cache</tspan>；</text><text x="36" y="214" font-size="11.5">但只为 1 个 token 做计算。读得多、算得少 → <tspan font-weight="600">显存带宽瓶颈（memory-bound）</tspan>；决定每 token 间隔 TPOT 和总吞吐。</text><text x="36" y="232" font-size="11" opacity=".75">（下一节用一个可调的计算器把这句话量化）</text></g></svg>
