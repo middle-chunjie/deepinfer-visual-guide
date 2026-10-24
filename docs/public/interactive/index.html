@@ -415,6 +415,7 @@ details[open] summary{margin-bottom:6px}
     <dt>KV cache</dt><dd>注意力层为已处理 token 缓存的 Key/Value 向量，避免每步重算历史，见第 06 节。</dd>
     <dt>kernel</dt><dd>在 GPU 上执行的一个函数（一次矩阵乘、一次注意力…）。CPU 每发射一个 kernel 有几微秒开销。</dd>
     <dt>CUDA Graph</dt><dd>把一串 kernel 录下来、之后一次性重放，省掉逐个发射的 CPU 开销。</dd>
+    <dt>eager</dt><dd>PyTorch 的默认执行方式：每行代码立刻让 GPU 执行对应的 kernel。与之相对的是把整串 kernel 录成图再重放（CUDA Graph）。见第 10 节。</dd>
     <dt>MoE</dt><dd>Mixture of Experts：FFN 换成很多个「专家」，每个 token 只激活其中几个。参数多、单 token 计算少。</dd>
     <dt>TP / DP / EP / CP</dt><dd>张量并行（切矩阵）/ 数据并行（复制整份，各跑各的请求）/ 专家并行（把专家分到不同卡）/ 上下文并行（把一条长序列切到多卡）。见第 16 节。</dd>
     <dt>集合通信</dt><dd>多张卡一起参与的数据交换：<b>all-reduce</b>（加总，人人拿到总和）、<b>all-gather</b>（拼接，人人拿到全部）、<b>all-to-all</b>（每卡给每卡发不同内容）、<b>broadcast</b>（一份发给所有卡）。详见第 16 节「先看懂：并行方式和通信方式」。</dd>
@@ -644,6 +645,37 @@ Llama-3.1-70B（GQA，BF16）= 80 × 8 × 128 × 2 × 2 B = 320 KB / token  → 
     <div class="card v"><span class="lab">vLLM</span>CUDA Graph（默认整图 + 分段图）消掉 kernel 发射开销；<code>--async-scheduling</code> 让 CPU 提前一步调度；Model Runner V2 把输入准备也搬到 GPU。</div>
     <div class="card d"><span class="lab">DeepInfer</span>调度与输入准备用 C++；decode 整图捕获；ZOS（零开销调度）把第 N 步的后处理藏到第 N+1 步 forward 后面，长度修正在 GPU 上做，整条路径禁止 CPU-GPU 同步。</div>
   </div>
+  <h3>先看懂：eager 怎么跑，为什么要多张图</h3>
+  <p><b>eager（急切执行）是 PyTorch 的默认方式：代码执行到哪一行，就立刻让 GPU 做哪一步。</b>以一层里的几行为例：</p>
+  <pre>h = rmsnorm(x)          # 发射 kernel ①
+q = h @ Wq              # 发射 kernel ②
+k = h @ Wk              # 发射 kernel ③
+a = attention(q, k, v)  # 发射 kernel ④</pre>
+  <p>每一行背后，CPU 都要做一遍：Python 执行这一行，PyTorch 判断形状、选一个 kernel，再调用 CUDA 驱动，把「这个 kernel 加这些参数」放进 GPU 的任务队列。每次耗时在几微秒量级（凭经验的数量级，没有实测）。一步 decode 有 40 层、每层几十个 kernel，就是几千次发射。而 decode 时每个 kernel 本身只算几微秒到几十微秒，于是 CPU 发射得比 GPU 执行还慢，GPU 做完一个就得空等下一个。</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 860 300" role="img" aria-label="上：eager 时 CPU 每发射一个 kernel，GPU 才能执行一个，中间有空隙；CUDA Graph 只需 CPU 一次重放，GPU 连续执行。下：每张图只适用于录制时的形状，实际 token 数不够时补到最近的桶"><defs><marker id="aeg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs><text x="20" y="18" font-size="12" font-weight="600">eager：CPU 发射一个，GPU 才能执行一个</text><text x="20" y="49" font-size="10.5" class="m" fill="var(--muted)">CPU</text><text x="20" y="73" font-size="10.5" class="m" fill="var(--muted)">GPU</text><rect x="100" y="36" width="82" height="18" rx="3" fill="var(--swa)"/><rect x="184" y="60" width="36" height="18" rx="3" fill="var(--c2)"/><rect x="184" y="36" width="82" height="18" rx="3" fill="var(--swa)"/><rect x="268" y="60" width="36" height="18" rx="3" fill="var(--c2)"/><rect x="268" y="36" width="82" height="18" rx="3" fill="var(--swa)"/><rect x="352" y="60" width="36" height="18" rx="3" fill="var(--c2)"/><rect x="352" y="36" width="82" height="18" rx="3" fill="var(--swa)"/><rect x="436" y="60" width="36" height="18" rx="3" fill="var(--c2)"/><rect x="436" y="36" width="82" height="18" rx="3" fill="var(--swa)"/><rect x="520" y="60" width="36" height="18" rx="3" fill="var(--c2)"/><rect x="520" y="36" width="82" height="18" rx="3" fill="var(--swa)"/><rect x="604" y="60" width="36" height="18" rx="3" fill="var(--c2)"/><text x="650" y="73" font-size="11">GPU 大部分时间在空等</text><text x="20" y="108" font-size="12" font-weight="600">CUDA Graph：CPU 一次重放，GPU 连续执行</text><text x="20" y="139" font-size="10.5" class="m" fill="var(--muted)">CPU</text><text x="20" y="163" font-size="10.5" class="m" fill="var(--muted)">GPU</text><rect x="100" y="126" width="82" height="18" rx="3" fill="var(--swa)"/><text x="141.0" y="139" font-size="9.5" text-anchor="middle" fill="#fff">重放</text><rect x="184" y="150" width="35" height="18" rx="3" fill="var(--c2)"/><rect x="220" y="150" width="35" height="18" rx="3" fill="var(--c2)"/><rect x="256" y="150" width="35" height="18" rx="3" fill="var(--c2)"/><rect x="292" y="150" width="35" height="18" rx="3" fill="var(--c2)"/><rect x="328" y="150" width="35" height="18" rx="3" fill="var(--c2)"/><rect x="364" y="150" width="35" height="18" rx="3" fill="var(--c2)"/><line x1="400" y1="118" x2="400" y2="172" stroke="var(--muted)" stroke-dasharray="3 3"/><text x="408" y="163" font-size="11">同样 6 个 kernel，更早做完</text><text x="100" y="190" font-size="10" fill="var(--muted)">示意，不按真实时长；青 = CPU 发射 / 重放，蓝 = GPU 执行 kernel</text><line x1="20" y1="202" x2="840" y2="202" stroke="var(--line)"/><text x="20" y="224" font-size="12" font-weight="600">为什么要多张图：每张图只适用于录制时的形状</text><rect x="20" y="236" width="106" height="30" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/><text x="73" y="255" font-size="11" text-anchor="middle">图 · 1 个 token</text><rect x="138" y="236" width="106" height="30" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/><text x="191" y="255" font-size="11" text-anchor="middle">图 · 2</text><rect x="256" y="236" width="106" height="30" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/><text x="309" y="255" font-size="11" text-anchor="middle">图 · 4</text><rect x="374" y="236" width="106" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/><text x="427" y="255" font-size="11" text-anchor="middle">图 · 8</text><rect x="492" y="236" width="106" height="30" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-width="1"/><text x="545" y="255" font-size="11" text-anchor="middle">图 · 16</text><text x="620" y="249" font-size="10.5">每张图里固定了：</text><text x="620" y="263" font-size="10.5">kernel 序列 · 张量形状 · 内存地址</text><text x="20" y="289" font-size="11">本步实际 5 个 token：</text><rect x="150" y="276" width="20" height="18" rx="3" fill="var(--c2)"/><rect x="174" y="276" width="20" height="18" rx="3" fill="var(--c2)"/><rect x="198" y="276" width="20" height="18" rx="3" fill="var(--c2)"/><rect x="222" y="276" width="20" height="18" rx="3" fill="var(--c2)"/><rect x="246" y="276" width="20" height="18" rx="3" fill="var(--c2)"/><rect x="270" y="276" width="20" height="18" rx="3" fill="var(--surface)" stroke="var(--muted)" stroke-dasharray="3 2"/><rect x="294" y="276" width="20" height="18" rx="3" fill="var(--surface)" stroke="var(--muted)" stroke-dasharray="3 2"/><rect x="318" y="276" width="20" height="18" rx="3" fill="var(--surface)" stroke="var(--muted)" stroke-dasharray="3 2"/><line x1="348" y1="285" x2="376" y2="285" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#aeg)"/><text x="384" y="289" font-size="11">补 3 个占位（虚线）凑成 8，重放「图 · 8」，占位的结果丢弃</text></svg>
+    </div>
+    <figcaption>上半：eager 时 CPU 每发射一个 kernel，GPU 才能执行一个，中间有空隙；CUDA Graph 只需 CPU 一次重放，GPU 连续执行。下半：每张图只适用于录制时的形状，实际 token 数不够时补到最近的桶。</figcaption>
+  </figure>
+  <p><b>CUDA Graph 分两步：</b>① <b>录制（capture）</b>：先正常跑一遍这一步，但 CUDA 不执行，只记录「依次发射了哪些 kernel、各自的参数」，存成一个图。② <b>重放（replay）</b>：以后每步只调用一次「重放」，驱动一次性把整串 kernel 交给 GPU，CPU 只花一次发射的成本。</p>
+  <p><b>为什么需要多张图：录下来的是死的</b>，重放时不会重新执行 Python 代码，而是原样照放：</p>
+  <ul>
+    <li><b>形状写死</b>：矩阵乘用多少行、kernel 开多少个线程块，录制时就由形状决定了。batch 从 8 变成 5，同一份记录就不适用了。</li>
+    <li><b>地址写死</b>：kernel 参数里记的是输入输出张量的地址，所以重放前要把新数据拷进录制时用的那块固定缓冲区，不能换一块新的。</li>
+    <li><b>逻辑写死</b>：录制时走了哪个 <code>if</code> 分支，重放时就永远是那个分支。</li>
+  </ul>
+  <p>所以每种形状要单独录一张图。decode 的形状主要由本步总 token 数决定，启动时按一组大小各录一张（第 03 节的 <code>warm_up_model</code>）。运行时实际是 5 个 token，就补到最近的更大桶：补 3 个占位 token 凑成 8，重放「图 · 8」，多算的结果丢掉。</p>
+  <p>多张图的代价：</p>
+  <div class="tbl"><table>
+    <tr><th>代价</th><th>说明</th></tr>
+    <tr><td>启动时间</td><td>每张图都要录一次，图越多越久</td></tr>
+    <tr><td>显存</td><td>每张图自己记录 kernel 和参数；中间激活的显存通常可以共享（具体实现没有核对）</td></tr>
+    <tr><td>padding 浪费</td><td>桶分得粗，补的无用计算就多</td></tr>
+    <tr><td>灵活性</td><td>图里不能有依赖具体数值的 Python 逻辑</td></tr>
+  </table></div>
+  <p>这也是 prefill 为什么直接 eager：一步算几千到几万个 token，每个 kernel 跑得久，几微秒的发射开销占比可以忽略，而且长度跨度太大，录不出足够的图。</p>
+
   <h3>CUDA Graph：把几千次发射变成一次</h3>
   <p>一个 40 层 MoE 模型的一步 decode 由几千个 kernel 组成，每个 kernel 从 CPU 发射要几微秒，加起来可能和 GPU 计算时间相当。CUDA Graph 先把整串 kernel「录」下来，之后每步只需一次重放。限制是录下来的形状固定，所以要按 batch 大小分桶，各录一张图。</p>
   <div class="grid2">

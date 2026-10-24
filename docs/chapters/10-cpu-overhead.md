@@ -4,6 +4,44 @@
 | --- | --- | --- |
 | GPU 一步 decode 只要几毫秒。如果 CPU 每步要花 1–2 ms 调度、准备输入、逐个发射几千个 kernel、再处理输出，GPU 有相当一部分时间在等 CPU。这是第 05 节的杠杆 ⑤。 | CUDA Graph（默认整图 + 分段图）消掉 kernel 发射开销；`--async-scheduling` 让 CPU 提前一步调度；Model Runner V2 把输入准备也搬到 GPU。 | 调度与输入准备用 C++；decode 整图捕获；ZOS（零开销调度）把第 N 步的后处理藏到第 N+1 步 forward 后面，长度修正在 GPU 上做，整条路径禁止 CPU-GPU 同步。 |
 
+## 先看懂：eager 怎么跑，为什么要多张图
+
+**eager（急切执行）是 PyTorch 的默认方式：代码执行到哪一行，就立刻让 GPU 做哪一步。**以一层里的几行为例：
+
+```python
+h = rmsnorm(x)          # 发射 kernel ①
+q = h @ Wq              # 发射 kernel ②
+k = h @ Wk              # 发射 kernel ③
+a = attention(q, k, v)  # 发射 kernel ④
+```
+
+每一行背后，CPU 都要做一遍：Python 执行这一行，PyTorch 判断形状、选一个 kernel，再调用 CUDA 驱动，把「这个 kernel 加这些参数」放进 GPU 的任务队列。每次耗时在几微秒量级（凭经验的数量级，没有实测）。一步 decode 有 40 层、每层几十个 kernel，就是几千次发射。而 decode 时每个 kernel 本身只算几微秒到几十微秒，于是 CPU 发射得比 GPU 执行还慢，GPU 做完一个就得空等下一个。
+
+![eager 与 CUDA Graph 的时间线，以及按桶补齐](../assets/figures/10-0.svg)
+
+<small>上半：eager 时 CPU 每发射一个 kernel，GPU 才能执行一个，中间有空隙；CUDA Graph 只需 CPU 一次重放，GPU 连续执行。下半：每张图只适用于录制时的形状，实际 token 数不够时补到最近的桶。</small>
+
+**CUDA Graph 分两步：**① **录制（capture）**：先正常跑一遍这一步，但 CUDA 不执行，只记录「依次发射了哪些 kernel、各自的参数」，存成一个图。② **重放（replay）**：以后每步只调用一次「重放」，驱动一次性把整串 kernel 交给 GPU，CPU 只花一次发射的成本。
+
+**为什么需要多张图：录下来的是死的**，重放时不会重新执行 Python 代码，而是原样照放：
+
+- **形状写死**：矩阵乘用多少行、kernel 开多少个线程块，录制时就由形状决定了。batch 从 8 变成 5，同一份记录就不适用了。
+- **地址写死**：kernel 参数里记的是输入输出张量的地址，所以重放前要把新数据拷进录制时用的那块固定缓冲区，不能换一块新的。
+- **逻辑写死**：录制时走了哪个 `if` 分支，重放时就永远是那个分支。
+
+所以每种形状要单独录一张图。decode 的形状主要由本步总 token 数决定，启动时按一组大小各录一张（第 03 节的 `warm_up_model`）。运行时实际是 5 个 token，就补到最近的更大桶：补 3 个占位 token 凑成 8，重放「图 · 8」，多算的结果丢掉。
+
+多张图的代价：
+
+| 代价 | 说明 |
+| --- | --- |
+| 启动时间 | 每张图都要录一次，图越多越久 |
+| 显存 | 每张图自己记录 kernel 和参数；中间激活的显存通常可以共享（具体实现没有核对） |
+| padding 浪费 | 桶分得粗，补的无用计算就多 |
+| 灵活性 | 图里不能有依赖具体数值的 Python 逻辑 |
+
+这也是 prefill 为什么直接 eager：一步算几千到几万个 token，每个 kernel 跑得久，几微秒的发射开销占比可以忽略，而且长度跨度太大，录不出足够的图。
+
 ## CUDA Graph：把几千次发射变成一次
 
 一个 40 层 MoE 模型的一步 decode 由几千个 kernel 组成，每个 kernel 从 CPU 发射要几微秒，加起来可能和 GPU 计算时间相当。CUDA Graph 先把整串 kernel「录」下来，之后每步只需一次重放。限制是录下来的形状固定，所以要按 batch 大小分桶，各录一张图。
