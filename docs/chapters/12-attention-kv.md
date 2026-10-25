@@ -10,6 +10,12 @@
 
 <small>计算：MHA = 80 层 × 64 头 × 128 × 2 × 2 B；GQA = 80 × 8 × 128 × 2 × 2 B；MLA = 61 层 × (512 + 64) × 2 B。V4.1 按 `kv_source_layer_ids` 只有 4 层存压缩 KV（3 个 C2 层每 2 token 一条、1 个 C1 层每 token 一条，每条 288 B），再加同样规律的 indexer K（每条 68 B），合计约 890 B/token；滑窗 KV 每层固定 ~134 条 × 528 B，与上下文长度无关。V4.1 的数字是我按 config 与 `cache_engine.py` 的共享规则推算的，没有在机器上实测。32K 上下文时 GQA 约 10 GB/请求，V4.1 约 32 MB/请求。</small>
 
+三种做法具体存的是什么：
+
+![GQA、MLA、V4.1 三种做法存的 KV 对比](../assets/figures/12-0.svg)
+
+<small>示意图：为画得下，Q 头、KV 头、层数和 token 数都缩小了，真实数字写在文字里。数字来源：GQA 按 Llama-3.1-70B（80 层、64 个 Q 头、8 个 KV 头、head_dim 128），MLA 按 DeepSeek-V3（61 层、latent 512 + rope 64），V4.1 的第 20 层是 C1（每 token 一条，不压缩），图里只画了 C2 层，数字是我按 config 与 `cache_engine.py` 推算的，没有实测。MLA 的「用时还原」是概念画法，实际推理实现常把上投影合并进注意力计算，不显式还原。</small>
+
 四代压缩分别靠什么：
 
 1. **GQA**：多个 query 头共用一组 KV 头（64 → 8）。
