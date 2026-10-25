@@ -74,6 +74,38 @@ a = attention(q, k, v)  # 发射 kernel ④
 - 在 GPU 上用上一步真实的接受数和置信度修正长度：`compute_seqlens_k_zos`、`compute_seqlens_q_by_confidence_rates`（两个 TileLang kernel）。[`worker.py:191`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/deepinfer/worker/worker.py#L191)
 - 上一步刚采出来的 token 直接在 GPU 上从 `prev_sampled_token_ids` 取，不回 CPU。[`zos_status.py:24`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/deepinfer/worker/zos_status.py#L24)
 
+### 乐观假设：CPU 先假设草稿全被接受
+
+CPU 调度每个请求时，都把这一步按「吐出 nextn+1 个 token」记账：`max_seqlen_q = nextn + 1`，并执行 `start_inflight_step(max_seqlen_q)`，`seqlen_k = num_tokens + total_inflight_tokens + seqlen_q`。[`scheduler.hpp:689`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/csrc/engine/scheduler.hpp#L689) 块表也按这个上限预留。这就是「乐观」：假设上一步的 nextn 个草稿全被接受。全接受时记账刚好对；只要有草稿被拒，CPU 的 `seqlen_k` 就偏大 `nextn − accepted`。（「乐观 = 全接受」是我从 `max_seqlen_q` 和下面的 kernel 公式反推的，源码里没有哪行直接这样写。）
+
+GPU 上的 `compute_seqlens_k_zos` 用上一步真实的接受数把它改正（`num_accepted_tokens` 是被接受的草稿数，范围 0 到 nextn）：[`compute_seqlens_k_zos.py:10`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/deepinfer/model_executor/layers/tilelang_ops/compute_seqlens_k_zos.py#L10)
+
+```text
+seqlens_k[i] += seqlens_q[i]
+seqlens_k[i] -= nextn - prev_num_accepted_tokens[j]   # j = remap[i]，新请求（-1）不修正
+```
+
+`remap` 的作用：第 N 步的 batch 和第 N−1 步不一定同序（有请求结束、有新请求加入），要靠 `remap[i]=j` 找到「我在上一步是第几个」。[`zos.cpp:142`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/csrc/engine/zos.cpp#L142) 这个修正是 GPU 上一个很小的原地 kernel，排在 H2D 拷贝之后、注意力之前，CPU 不用等，也没有同步。[`worker.py:191`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/deepinfer/worker/worker.py#L191)
+
+### 置信度修正 q 长度：把 token 预算花在更可能被接受的位置
+
+开启 `DEEPINFER_ENABLE_MTP_VARLEN` 后，每个请求这步该验证几个草稿不再固定为 nextn。思路：各请求的草稿被接受的概率不同，总 token 预算应该给概率高的。输入是 CPU 定下的总预算 `total_q`，以及上一步 MTP 头给每个草稿打的置信度（上一步预测出的草稿，正好是这一步要验证的草稿，所以 GPU 上现成就有，不用回 CPU）。算法：
+
+1. 对每个请求沿草稿位置做累乘：`cum[j] = r1×r2×…×rj`。第 j 个草稿要被接受，前 j−1 个必须先被接受。新请求（`remap=-1`）全记 0。
+2. 把所有请求的所有位置放在一起，按累乘值从大到小排名，平手取序号小的。
+3. 额外名额是 `total_q − num_seqs`（每个请求至少保 1 个 token）。排名靠前的位置拿到名额。
+4. `seqlens_q[i] = 1 + 该请求拿到的位置数`。累乘不增，所以每个请求拿到的一定是一段前缀。
+
+[`schedule_mtp_varlen.py:11`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/deepinfer/model_executor/layers/tilelang_ops/schedule_mtp_varlen.py#L11) 修正后的 `seqlens_q` 会异步拷回 CPU，采样要用。[`worker.py:191`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/deepinfer/worker/worker.py#L191)
+
+![k 与 q 的修正示例](../assets/figures/10-3.svg)
+
+<small>示意：左图是 seqlen_k 修正，右图是按累乘置信度分配 q 的 token 名额。数值是为说明算法编的例子，不是实测。</small>
+
+这个例子里 nextn=3、三个请求，总预算 7，额外名额 7−3=4：A 的累乘是 0.9、0.72、0.504，B 是 0.6、0.3、0.12，C 是新请求全 0。九个位置里前四名是 A1、A2、B1、A3，所以 A 的 q=4、B 的 q=2、C 的 q=1，合计 7。
+
+预算从哪来：CPU 的 `MTPVarlen::schedule` 根据 decode 性能曲线选 `total_q`，注释说它用 N−2 轮的接受率，而 GPU 上分配 q 用的是 N−1 轮的，更新一轮。[`mtp_varlen.hpp:160`](https://github.com/deepseek-ai/DeepInfer/blob/9bd9cf243fc53ef9afbf8f04d391d989117d6ab9/csrc/engine/mtp_varlen.hpp#L160) 性能曲线按 `graph_size` 索引，所以我推断总预算是对着 CUDA Graph 的桶选的，这样既没有 padding 浪费，也不用为变长另录图。这是推断，没有逐行验证。收益来自低置信度的草稿大概率被拒、白占算力；源码里没有给出具体的吞吐提升数字，这里也不估计。
+
 整条路径上的 `execute_main_model`/`execute_sample` 都包在 `forbid_cuda_sync()` 里：一旦有人写了隐式同步（比如 `.item()`），直接报错。`tests/test_cuda_sync_guards.py` 专门测这个。
 
 ---
